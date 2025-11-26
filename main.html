@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>통합 좌석 예약 시스템 메인</title>
+    <style>
+        /* -------------------- 공통 기본 스타일 -------------------- */
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 30px; 
+            background-color: #f0f0f0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            min-height: 100vh;
+            padding-top: 50px; 
+        }
+        
+        /* -------------------- Main Hub View 스타일 -------------------- */
+        #main-hub {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .nav-container { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px; 
+            width: 350px; 
+            padding: 30px; 
+            background-color: white; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+        }
+        .nav-button { 
+            padding: 15px; 
+            background-color: #007bff; 
+            color: white; 
+            text-decoration: none; 
+            text-align: center; 
+            border-radius: 5px; 
+            font-weight: bold; 
+            font-size: 18px; 
+            transition: background-color 0.2s; 
+            cursor: pointer;
+            display: block; 
+        }
+        .nav-button:hover { background-color: #0056b3; }
+
+        /* -------------------- 모달 및 고정 버튼 스타일 -------------------- */
+        .modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+        .modal-content { 
+            background-color: #fefefe; margin: 15% auto; padding: 30px; border: 1px solid #888; 
+            width: 90%; max-width: 450px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
+        }
+        .modal-buttons button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        #admin-login-button { background-color: #4CAF50; color: white; }
+        #admin-cancel-button { background-color: #f44336; color: white; }
+        
+        /* 관리자 버튼 고정 */
+        #admin-mode-toggle { 
+            position: fixed; top: 10px; right: 10px; padding: 10px 15px; 
+            background-color: #007bff; color: white; border: none; border-radius: 5px; 
+            cursor: pointer; z-index: 11; font-weight: bold;
+        }
+        #admin-mode-toggle.admin-logged-in { background-color: #ff9800 !important; }
+    </style>
+</head>
+<body>
+
+    <button id="admin-mode-toggle">관리자/선생님 로그인</button>
+
+    <div id="main-hub">
+        <h1>좌석 예약 시스템 메인</h1>
+        <div class="nav-container">
+            <a href="test-1.html" class="nav-button">서편 홈베이스(도서관 쪽)</a>
+            <a href="test-2.html" class="nav-button">동편 홈베이스(9반 쪽)</a>
+            <a href="#" id="test-3-link" class="nav-button">정독실(도서관 앞)</a>
+        </div>
+    </div>
+    
+    <div id="adminLoginModal" class="modal">
+        <div class="modal-content">
+            <h3>관리자/선생님 로그인</h3>
+            <label for="adminPass">비밀번호:</label>
+            <input type="password" id="adminPass" placeholder="비밀번호를 입력하세요">
+            <div class="modal-buttons" style="margin-top: 20px; display: flex; gap: 10px;">
+                <button id="admin-login-button">로그인</button>
+                <button id="admin-cancel-button">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 상수 설정 ---
+        const SECRET_PASSWORDS = ['shinheung8802!']; // 관리자 로그인 비밀번호
+        const TEST3_PASSWORD = 'shinheung8802';       // 정독실 접근 비밀번호
+
+        // --- 전역 변수 및 DOM 요소 ---
+        let isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true'; 
+        
+        const adminModeToggle = document.getElementById('admin-mode-toggle');
+        const adminLoginModal = document.getElementById('adminLoginModal');
+        const adminPassInput = document.getElementById('adminPass');
+        const test3Link = document.getElementById('test-3-link');
+        const adminLoginButton = document.getElementById('admin-login-button');
+        const adminCancelButton = document.getElementById('admin-cancel-button');
+
+        // --- UI 업데이트 함수 ---
+        const updateAdminUI = () => {
+            if (isAdminLoggedIn) {
+                adminModeToggle.textContent = '관리자 모드 (로그아웃)';
+                adminModeToggle.classList.add('admin-logged-in');
+            } else {
+                adminModeToggle.textContent = '관리자/선생님 로그인';
+                adminModeToggle.classList.remove('admin-logged-in');
+            }
+        };
+
+        // --- 관리자 로그인/로그아웃 핸들러 ---
+        const handleAdminLogin = () => {
+            isAdminLoggedIn = true;
+            localStorage.setItem('isAdminLoggedIn', 'true');
+            updateAdminUI();
+            adminLoginModal.style.display = 'none';
+            alert('관리자/선생님으로 로그인했습니다. 각 좌석 페이지에서 초기화 및 간편 예약이 가능합니다.');
+        };
+
+        const handleAdminLogout = () => {
+            isAdminLoggedIn = false;
+            localStorage.removeItem('isAdminLoggedIn');
+            updateAdminUI();
+            alert('관리자 모드가 해제되었습니다.');
+        };
+
+        // --- 이벤트 리스너 설정 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            updateAdminUI();
+
+            // 1. 관리자 모드 토글 (로그인 모달 표시 또는 로그아웃)
+            adminModeToggle.addEventListener('click', () => {
+                if (isAdminLoggedIn) {
+                    handleAdminLogout();
+                } else {
+                    adminPassInput.value = '';
+                    adminLoginModal.style.display = 'block';
+                    adminPassInput.focus(); // 비밀번호 입력창에 포커스
+                }
+            });
+
+            // 2. 관리자 로그인 버튼
+            adminLoginButton.addEventListener('click', () => {
+                const password = adminPassInput.value;
+                if (SECRET_PASSWORDS.includes(password)) {
+                    handleAdminLogin();
+                } else {
+                    alert('비밀번호가 틀렸습니다.');
+                }
+            });
+
+            // 3. 관리자 로그인 취소 버튼
+            adminCancelButton.addEventListener('click', () => {
+                adminLoginModal.style.display = 'none';
+            });
+            
+            // 4. 정독실 (test-3.html) 접근 로직 (비밀번호 한 번만 요청)
+            test3Link.addEventListener('click', (event) => {
+                event.preventDefault(); 
+                
+                // 관리자 로그인 상태면 바로 이동
+                if (isAdminLoggedIn) {
+                    window.location.href = 'test-3.html';
+                    return;
+                }
+
+                // 일반 사용자일 경우, 비밀번호 프롬프트 표시 (단 한 번)
+                const password = prompt("정독실 페이지로 이동하려면 비밀번호를 입력하세요:");
+                
+                if (password === null) {
+                    // 사용자가 '취소'를 누른 경우
+                    return; 
+                }
+
+                if (password === TEST3_PASSWORD) {
+                    window.location.href = 'test-3.html';
+                } else {
+                    alert("비밀번호가 틀렸습니다."); 
+                }
+            });
+        });
+    </script>
+</body>
+</html>
