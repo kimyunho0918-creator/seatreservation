@@ -165,13 +165,13 @@
                 <script>
                     // 개인석 9번부터 15번까지
                     for (let i = 9; i <= 15; i++) {
+                        // ★★★ 끊긴 코드 복구 ★★★
                         document.write(`<button class="seat-button" data-initial-name="개인석 ${i}" data-type="single" data-capacity="1" data-min-required="1" data-pin="" data-admin-reserved="false"></button>`);
                     }
                 </script>
             </div>
         </div>
     </div>
-    
     
     <div id="reservationModal" class="modal">
         <div class="modal-content">
@@ -183,7 +183,7 @@
                 <input type="number" id="reservationPin" placeholder="4자리 숫자" min="1000" max="9999" required>
             </div>
             
-            <div class="modal-buttons">
+            <div class="modal-buttons" style="margin-top: 20px; display: flex; gap: 10px;">
                 <button id="save-button">저장</button>
                 <button id="cancel-button">취소</button>
             </div>
@@ -195,163 +195,210 @@
             <h3>관리자/선생님 로그인</h3>
             <label for="adminPass">비밀번호:</label>
             <input type="password" id="adminPass" placeholder="비밀번호를 입력하세요">
-            <div class="modal-buttons">
+            <div class="modal-buttons" style="margin-top: 20px; display: flex; gap: 10px;">
                 <button id="admin-login-button">로그인</button>
                 <button id="admin-cancel-button">취소</button>
             </div>
         </div>
     </div>
-
+    
     <script>
-        const SEAT_DATA_KEY = 'seatData2'; 
-
-        let isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true'; 
-        const SECRET_PASSWORDS = ['shinheung8802!']; 
+        const SEAT_DATA_KEY = 'seatData2';
+        let isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+        const SECRET_PASSWORDS = ['shinheung8802!'];
         let SEAT_DATA = JSON.parse(localStorage.getItem(SEAT_DATA_KEY) || '{}');
-        let currentButton = null; 
+        let currentButton = null;
 
+        const buttons = document.querySelectorAll('.seat-button');
+        const modal = document.getElementById('reservationModal');
+        const adminLoginModal = document.getElementById('adminLoginModal');
+        const adminPassInput = document.getElementById('adminPass');
+        const memberInputsDiv = document.getElementById('member-inputs');
+        const pinInput = document.getElementById('reservationPin');
+        const pinInputGroup = document.getElementById('pin-input-group');
         const adminModeToggle = document.getElementById('admin-mode-toggle');
         const resetAllButton = document.getElementById('reset-all-button');
 
-        const saveSeatData = () => { 
+        // 모든 좌석에 고유 ID 부여
+        buttons.forEach((button, index) => {
+            button.id = 'seat-' + index;
+        });
+
+        // -------------------- 2. 유틸리티 함수 --------------------
+        const saveSeatData = () => {
             localStorage.setItem(SEAT_DATA_KEY, JSON.stringify(SEAT_DATA));
         };
-        
+
         const updateAdminUI = () => {
             if (isAdminLoggedIn) {
                 adminModeToggle.textContent = '관리자 모드 (로그아웃)';
                 adminModeToggle.classList.add('admin-logged-in');
                 resetAllButton.style.display = 'inline-block';
+                pinInputGroup.style.display = 'none';
             } else {
                 adminModeToggle.textContent = '관리자/선생님 로그인';
                 adminModeToggle.classList.remove('admin-logged-in');
                 resetAllButton.style.display = 'none';
+                pinInputGroup.style.display = 'block';
             }
         };
 
         const revertSeatToInitialState = (button) => {
-             const initialName = button.dataset.initialName;
-             const seatId = button.id;
-             
-             button.innerHTML = initialName;
-             button.classList.remove('reserved');
-             button.style.fontSize = '18px'; 
-             button.style.lineHeight = '1.3';
-             button.dataset.pin = ''; 
-             // 선생님 전용 좌석은 admin-reserved가 true로 시작합니다.
-             button.dataset.adminReserved = button.dataset.adminOnly === 'true' ? 'true' : 'false'; 
-             delete SEAT_DATA[seatId];
-             saveSeatData();
-             
-             // ★ 초기 색상 복원 로직 (새 레이아웃에 맞게 수정)
-             const group = button.closest('[id$="-container"], [id$="-column"]');
-             if (group) {
-                 if (group.id === 'group-mixed-seats') {
-                     // 4인석 및 선생님 좌석 (좌측)
-                     if (button.dataset.adminOnly === 'true') {
-                          // 선생님 전용 좌석 초기 색상
-                          button.style.backgroundColor = '#64b5f6';
-                          button.style.borderColor = '#42a5f5'; 
-                          button.innerHTML = '선생님 전용<br>예약 자리';
-                     } else {
-                         // 4인석 초기 색상
-                         button.style.backgroundColor = '#ffccbc';
-                         button.style.borderColor = '#ffab91'; 
-                     }
-                 } else if (group.classList.contains('individual-seat-column')) {
-                     // 개인석 (우측)
-                     button.style.backgroundColor = '#c8e6c9';
-                     button.style.borderColor = '#a5d6a7'; 
-                 }
-             }
-        }
+            const initialName = button.dataset.initialName;
+            const seatId = button.id;
+            
+            button.innerHTML = initialName;
+            button.classList.remove('reserved');
+            button.style.fontSize = '18px';
+            button.style.lineHeight = '1.3';
+            button.dataset.pin = '';
+            button.dataset.adminReserved = 'false';
+            delete SEAT_DATA[seatId];
+            saveSeatData(); 
 
-        const resetSeats = (time) => {
-            document.querySelectorAll('.seat-button').forEach(button => {
-                revertSeatToInitialState(button);
-            });
+            // 초기 색상 복원 로직
+            if (button.dataset.type === 'teacher') {
+                button.classList.add('teacher-seat'); // 선생님 전용 스타일 복구
+                button.style.backgroundColor = '#64b5f6';
+                button.style.borderColor = '#42a5f5';
+            } else if (button.closest('.left-group-container')) {
+                button.style.backgroundColor = '#ffccbc'; 
+                button.style.borderColor = '#ffab91'; 
+            } else if (button.closest('.right-individual-container')) {
+                button.style.backgroundColor = '#c8e6c9'; 
+                button.style.borderColor = '#a5d6a7';
+            } else {
+                button.style.backgroundColor = '#e0e0e0';
+                button.style.borderColor = '#ccc';
+            }
+        };
+
+        const resetSeats = (reason) => {
+            buttons.forEach(revertSeatToInitialState);
             SEAT_DATA = {};
             saveSeatData();
-            console.log(`[${time}] 모든 좌석 예약 정보가 초기화되었습니다. (키: ${SEAT_DATA_KEY})`);
-        };
-        
-        const updateSeatsUI = () => { 
-             const buttons = document.querySelectorAll('.seat-button');
-             buttons.forEach((button, index) => {
-                 const seatId = 'seat-' + index;
-                 button.id = seatId;
-                 const savedData = SEAT_DATA[seatId];
-                 
-                 // 선생님 전용 좌석의 경우 데이터가 없으면 초기 상태로 바로 복원
-                 if (button.dataset.adminOnly === 'true' && !savedData) {
-                    revertSeatToInitialState(button);
-                    return;
-                 }
-                 
-                 if (savedData) {
-                     const capacity = parseInt(button.dataset.capacity);
-                     const minRequired = parseInt(button.dataset.minRequired);
-                     
-                     const principalName = savedData.members[0] ? savedData.members[0].name : (savedData.adminReserved ? '관리자 예약' : '단체 예약');
-                     // 선생님 좌석은 예약 인원 표시 대신 '예약 완료' 표시
-                     const reservationCount = savedData.adminOnly === 'true' ? capacity : (savedData.adminReserved ? capacity : savedData.members.length);
-                     const adminLabel = savedData.adminReserved ? '<br><span style="color:red; font-weight:bold;">(관리자 예약)</span>' : '';
+            console.log(`모든 좌석이 초기화되었습니다. (이유: ${reason})`);
+            updateSeatsUI();
+        }
 
-                     button.innerHTML = `
-                         ${principalName}${reservationCount > 1 ? ` 외 ${reservationCount - 1}명` : ''}<br>
-                         <span class="reserved-info">
-                             ${button.dataset.adminOnly === 'true' ? '예약 완료' : `인원: ${reservationCount}명 (최소 ${minRequired}명)`}<br>
-                             등록: ${savedData.time}
-                         </span>
-                         ${adminLabel}
-                     `;
-                     
-                     button.classList.add('reserved');
-                     button.dataset.pin = savedData.pin;
-                     button.dataset.adminReserved = savedData.adminReserved ? 'true' : 'false';
-                     button.style.fontSize = '16px'; 
-                     button.style.lineHeight = '1.2';
-                     
-                     // 예약 완료 시 색상 적용
-                     if (button.dataset.adminOnly === 'true') {
-                        button.style.backgroundColor = '#4CAF50';
-                     } else {
-                        button.style.backgroundColor = '#81c784'; 
-                     }
-                 } else {
-                     revertSeatToInitialState(button);
-                 }
-             });
+        const createMemberInputs = (capacity) => {
+            memberInputsDiv.innerHTML = '';
+            const isAdminOnly = currentButton.dataset.adminOnly === 'true';
+            
+            // 선생님 전용 좌석은 관리자 로그인 여부와 관계없이 1개만 입력
+            // 일반 그룹석은 관리자 로그인 시 1개, 일반 사용자 시 정원만큼
+            const inputLimit = isAdminOnly ? 1 : (isAdminLoggedIn ? 1 : capacity);
+            
+            for (let i = 1; i <= inputLimit; i++) {
+                const group = document.createElement('div');
+                group.className = 'input-group';
+                
+                const header = document.createElement('p');
+                let headerText = `${i}번 인원 정보`;
+                if (currentButton.dataset.type === 'group' || isAdminOnly) {
+                    headerText += ` (필수 입력)`;
+                } else if (currentButton.dataset.type === 'single') {
+                     headerText += ` (필수 입력)`;
+                }
+                header.textContent = headerText;
+                header.style.marginBottom = '10px';
+                group.appendChild(header);
+
+                const idInput = document.createElement('input');
+                idInput.type = 'text';
+                idInput.className = 'member-id';
+                idInput.placeholder = `학번 ${i} ${isAdminOnly ? '(선생님/관리자용)' : ''}`;
+                group.appendChild(idInput);
+
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.className = 'member-name';
+                nameInput.placeholder = `성명 ${i} ${isAdminOnly ? '(선생님/관리자용)' : ''}`;
+                group.appendChild(nameInput);
+
+                memberInputsDiv.appendChild(group);
+            }
+
+            // 인원이 1명 이상이어야 하는 그룹석의 경우, 최소 인원 표시
+            if (currentButton.dataset.type === 'group' && !isAdminLoggedIn) {
+                const minRequired = parseInt(currentButton.dataset.minRequired);
+                const info = document.createElement('p');
+                info.textContent = `* 단체석은 최소 ${minRequired}명의 정보를 입력해야 예약이 가능합니다.`;
+                info.style.color = 'red';
+                info.style.marginTop = '15px';
+                memberInputsDiv.appendChild(info);
+            }
+
+            // 선생님 전용 좌석이거나 관리자 로그인 시 PIN 입력창 숨김
+            if (isAdminLoggedIn || isAdminOnly) {
+                pinInputGroup.style.display = 'none';
+            } else {
+                pinInputGroup.style.display = 'block';
+                pinInput.value = ''; // 일반 예약 시 PIN 초기화
+            }
+        };
+
+        const updateSeatsUI = () => {
+            buttons.forEach(button => {
+                const seatId = button.id;
+                const initialName = button.dataset.initialName;
+                const capacity = parseInt(button.dataset.capacity);
+                const minRequired = parseInt(button.dataset.minRequired);
+                const savedData = SEAT_DATA[seatId];
+                const isAdminOnly = button.dataset.adminOnly === 'true';
+
+                if (savedData) {
+                    // 예약 정보 표시
+                    const principalName = savedData.members[0] ? savedData.members[0].name : (savedData.adminReserved ? '관리자 예약' : '예약자');
+                    const reservationCount = savedData.members.length;
+                    const adminLabel = savedData.adminReserved ? '<br><span style="color:red; font-weight:bold;">(관리자 예약)</span>' : '';
+                    
+                    button.innerHTML = `
+                        ${principalName}${reservationCount > 1 ? ` 외 ${reservationCount - 1}명` : ''}<br>
+                        <span class="reserved-info">
+                            ${isAdminOnly ? '예약 완료' : `인원: ${reservationCount}명 (최소 ${minRequired}명)`}<br>
+                            등록: ${savedData.time}
+                        </span>
+                        ${adminLabel}
+                    `;
+                    button.classList.add('reserved');
+                    button.dataset.pin = savedData.pin;
+                    button.dataset.adminReserved = savedData.adminReserved ? 'true' : 'false';
+                    button.style.fontSize = '16px';
+                    button.style.lineHeight = '1.2';
+
+                    // 예약 완료 시 색상 적용
+                    if (isAdminOnly) {
+                        button.style.backgroundColor = '#4CAF50'; // 선생님 좌석 예약 완료 시 녹색
+                        button.classList.remove('teacher-seat');
+                    } else {
+                        button.style.backgroundColor = '#81c784'; // 일반 좌석 예약 완료 시 녹색
+                    }
+                    
+                } else {
+                    revertSeatToInitialState(button);
+                }
+            });
         }
         
         // -------------------- DOMContentLoaded 시작 --------------------
         document.addEventListener('DOMContentLoaded', () => {
-            const buttons = document.querySelectorAll('.seat-button');
-            const modal = document.getElementById('reservationModal');
-            const adminLoginModal = document.getElementById('adminLoginModal');
-            const adminPassInput = document.getElementById('adminPass');
-            const memberInputsDiv = document.getElementById('member-inputs');
-            const pinInput = document.getElementById('reservationPin');
-            const pinInputGroup = document.getElementById('pin-input-group');
-
-            buttons.forEach((button, index) => {
-                 button.id = 'seat-' + index;
-            });
-            updateSeatsUI(); 
+            // UI 초기 반영
+            updateSeatsUI();
             updateAdminUI(); 
-            
+
             // -------------------- 1. 로그인/로그아웃 기능 (유지) --------------------
             adminModeToggle.addEventListener('click', () => {
                 if (isAdminLoggedIn) {
                     isAdminLoggedIn = false;
                     localStorage.removeItem('isAdminLoggedIn');
                     updateAdminUI();
+                    updateSeatsUI(); // 로그아웃 시 선생님 좌석 상태 재적용을 위해
                     alert('관리자 모드가 해제되었습니다.');
-                    // 로그아웃 시 선생님 좌석 상태 재확인 (필요시)
-                    updateSeatsUI(); 
                 } else {
                     adminPassInput.value = '';
                     adminLoginModal.style.display = 'block';
+                    adminPassInput.focus();
                 }
             });
 
@@ -362,6 +409,7 @@
                     localStorage.setItem('isAdminLoggedIn', 'true');
                     updateAdminUI();
                     adminLoginModal.style.display = 'none';
+                    updateSeatsUI(); // 관리자 로그인 시 선생님 좌석 예약 가능하도록 UI 업데이트
                     alert('관리자/선생님으로 로그인했습니다. (PIN 입력창 자동 숨김, 초기화 버튼 활성화)');
                 } else {
                     alert('비밀번호가 틀렸습니다.');
@@ -372,61 +420,26 @@
                 adminLoginModal.style.display = 'none';
             });
 
+            // [추가] 전체 예약 초기화 버튼
             resetAllButton.addEventListener('click', () => {
-                 if (!isAdminLoggedIn) return;
-                 if (confirm('경고: 이 좌석 배치(test-2.html)의 모든 예약을 영구적으로 삭제하고 초기화하시겠습니까?')) {
-                     resetSeats('관리자 강제 초기화');
-                     alert('모든 좌석 예약이 초기화되었습니다.');
-                 }
-            });
-            
-            // -------------------- 2. 예약 및 취소 기능 (선생님 좌석 로직 추가) --------------------
-            
-            const createMemberInputs = (capacity) => {
-                memberInputsDiv.innerHTML = '';
-                // 선생님 전용 좌석은 관리자 모드가 아니어도 최대 1명만 입력받음
-                const inputLimit = currentButton.dataset.adminOnly === 'true' ? 1 : (isAdminLoggedIn ? 1 : capacity); 
-
-                for (let i = 1; i <= capacity; i++) {
-                    
-                    if (i > inputLimit) {
-                         // 선생님 좌석 예약 시 관리자는 1명만 입력
-                         if (currentButton.dataset.adminOnly === 'true') continue;
-                         // 일반 예약 시 관리자 로그인 상태면 1명만 입력
-                         if (isAdminLoggedIn) continue;
-                    }
-                    
-                    const group = document.createElement('div');
-                    group.className = 'input-group';
-                    
-                    const header = document.createElement('h4');
-                    let headerText = `${i}번 인원 정보`;
-                    if (i === 1) {
-                         headerText += ` (${currentButton.dataset.adminOnly === 'true' ? '필수: 관리자 이름' : '필수 입력 아님'})`;
-                    }
-                    header.textContent = headerText;
-                    header.style.marginBottom = '10px';
-                    group.appendChild(header);
-
-                    const idInput = document.createElement('input');
-                    idInput.type = 'text'; idInput.className = 'member-id'; idInput.placeholder = `학번 ${i} (선생님: 1111 등)`;
-                    group.appendChild(idInput);
-                    
-                    const nameInput = document.createElement('input');
-                    nameInput.type = 'text'; nameInput.className = 'member-name'; nameInput.placeholder = `성명 ${i} (선생님: OOO)`;
-                    group.appendChild(nameInput);
-
-                    memberInputsDiv.appendChild(group);
+                if (!isAdminLoggedIn) return;
+                if (confirm('경고: 이 좌석 배치(test-2.html)의 모든 예약을 영구적으로 삭제하고 초기화하시겠습니까?')) {
+                    resetSeats('관리자 강제 초기화');
+                    alert('모든 좌석 예약이 초기화되었습니다.');
                 }
-            };
+            });
 
+
+            // -------------------- 2. 예약 및 취소 기능 (유지) --------------------
             buttons.forEach(button => {
                 button.addEventListener('click', () => {
                     currentButton = button;
                     const initialName = button.dataset.initialName;
                     const capacity = parseInt(button.dataset.capacity);
+                    const minRequired = parseInt(button.dataset.minRequired);
                     const isAdminOnly = button.dataset.adminOnly === 'true';
 
+                    // 1. 예약된 좌석 클릭 시 (취소 로직)
                     if (button.classList.contains('reserved')) {
                         const reservedData = SEAT_DATA[button.id];
                         
@@ -436,30 +449,27 @@
                             return;
                         }
 
+                        // 관리자 로그인 상태: 즉시 취소 가능
                         if (isAdminLoggedIn) {
-                             // 관리자 취소 (일반/선생님 좌석 모두 가능)
-                             const data = reservedData || {members: [{name: '정보 없음', id: '정보 없음'}], pin: '없음', adminReserved: false};
-                             const memberList = data.members.map(m => `${m.name} (${m.id})`).join(', ');
-                             const adminLabel = data.adminReserved ? ' (관리자 예약)' : '';
-                             
-                             const pinInfo = isAdminOnly ? 'ADMIN' : data.pin;
+                            const data = reservedData || {members: [{name: '정보 없음', id: '정보 없음'}], pin: '없음', adminReserved: false};
+                            const memberList = data.members.map(m => `${m.name} (${m.id})`).join(', ');
+                            const adminLabel = data.adminReserved ? ' (관리자 예약)' : '';
 
-                             if (confirm(`[관리자 취소]\n${initialName} 좌석의 예약 정보입니다${adminLabel}.\n인원: ${memberList}\nPIN: ${pinInfo}\n\n이 예약을 삭제하시겠습니까?`)) {
-                                 revertSeatToInitialState(button);
-                                 alert('관리자 권한으로 예약이 취소되었습니다.');
-                             }
-                             return;
+                            if (confirm(`[관리자 모드] ${initialName} 정보입니다${adminLabel}.\n인원: ${memberList}\nPIN: (보호됨)\n\n이 예약을 삭제하시겠습니까?`)) {
+                                revertSeatToInitialState(button);
+                                alert('관리자 권한으로 예약이 취소되었습니다.');
+                            }
+                            return;
                         }
-                        
-                        // 일반 사용자 취소 (선생님 좌석은 이 단계에서 이미 막혔음)
-                        const confirmID = prompt(`${initialName}은(는) 예약된 좌석입니다.\n예약한 명단 중 한 명의 학번을 입력하세요:`);
-                        if (confirmID === null || confirmID.trim() === '') return;
 
+                        // 일반 사용자: 학번 및 PIN 확인 후 취소
+                        const confirmID = prompt(`${initialName}은(는 예약된 좌석입니다.\n예약한 명단 중 한 명의 학번을 입력하세요:`);
+                        if (confirmID === null || confirmID.trim() === '') return;
+                        
                         const confirmPIN = prompt(`학번 ${confirmID}의 취소용 PIN (4자리)을 입력하세요:`);
                         if (confirmPIN === null || confirmPIN.trim() === '') return;
 
                         const isMember = reservedData.members.some(m => m.id === confirmID.trim());
-                        
                         if (isMember && confirmPIN.trim() === reservedData.pin) {
                             revertSeatToInitialState(button);
                             alert('예약이 취소되었습니다.');
@@ -470,42 +480,52 @@
                         }
                         return;
                     }
+
+                    // 2. 빈 좌석 클릭 시 (예약 로직)
                     
-                    // --- 예약 시도 로직 ---
-                    
-                    // ★ 선생님 전용 좌석의 일반 사용자 예약 제한
+                    // ★ 선생님 전용 좌석 예약 제한
                     if (isAdminOnly && !isAdminLoggedIn) {
-                         alert(`[${initialName}]은(는) 관리자/선생님 전용 예약 좌석입니다. 관리자/선생님으로 로그인 후 예약해주세요.`);
-                         return;
+                        alert(`[${initialName}]은(는) 관리자 전용 좌석입니다. 관리자/선생님으로 로그인해야 예약할 수 있습니다.`);
+                        return;
                     }
+
 
                     document.getElementById('modal-seat-name').textContent = initialName + " 예약";
                     createMemberInputs(capacity);
-                    pinInput.value = '';
-                    
-                    // 선생님 전용 좌석은 관리자 로그인 여부와 관계없이 PIN 입력창 숨김
-                    pinInputGroup.style.display = (isAdminOnly || isAdminLoggedIn) ? 'none' : 'block';
                     modal.style.display = 'block';
+
+                    // 예약 창 열릴 때 첫 번째 학번 입력창에 포커스
+                    memberInputsDiv.querySelector('.member-id').focus(); 
                 });
             });
-            
+
             document.getElementById('save-button').addEventListener('click', () => {
-                const members = [];
-                let validCount = 0;
                 const capacity = parseInt(currentButton.dataset.capacity);
                 const minRequired = parseInt(currentButton.dataset.minRequired);
                 const isAdminOnly = currentButton.dataset.adminOnly === 'true';
+                const members = [];
+                let validCount = 0;
                 
-                const inputLimit = isAdminOnly ? 1 : (isAdminLoggedIn ? 1 : capacity);
-                
+                // 입력 필드 확인 로직 (선생님 전용은 무조건 1개만 확인)
+                const inputLimit = isAdminOnly ? 1 : (currentButton.dataset.type === 'single' ? 1 : (isAdminLoggedIn ? 1 : capacity));
+
                 for (let i = 0; i < inputLimit; i++) {
                     const idInput = memberInputsDiv.querySelectorAll('.member-id')[i];
                     const nameInput = memberInputsDiv.querySelectorAll('.member-name')[i];
-                    
                     const id = idInput.value.trim();
                     const name = nameInput.value.trim();
 
-                    if (id !== '' && name !== '') {
+                    // 첫 번째 인원은 필수 입력
+                    if (i === 0) {
+                        if (id === '' || name === '') {
+                            alert('최소한 1번 인원 정보(학번/성명)는 필수로 입력해야 합니다.');
+                            return;
+                        }
+                        members.push({ id: id, name: name });
+                        validCount++;
+                    } 
+                    // 나머지 인원은 모두 입력하거나 모두 비워야 함 (선택적 입력)
+                    else if (id !== '' && name !== '') {
                         members.push({ id: id, name: name });
                         validCount++;
                     } else if (id !== '' || name !== '') {
@@ -514,73 +534,44 @@
                     }
                 }
                 
-                let pin;
+                // 유효성 검사 2: 단체석 최소 인원 확인 (관리자, 선생님 전용 제외)
+                if (currentButton.dataset.type === 'group' && !isAdminLoggedIn && validCount < minRequired) {
+                    alert(`이 좌석은 최소 ${minRequired}명부터 예약이 가능합니다. 현재 입력된 인원은 ${validCount}명입니다.`);
+                    return;
+                }
 
+                // 유효성 검사 3: PIN 번호 확인
+                let pin;
                 if (isAdminLoggedIn || isAdminOnly) {
                     // 관리자 로그인 상태이거나 선생님 전용 좌석일 경우
-                    if (validCount === 0) {
-                        alert('최소 1번 인원 정보(이름/그룹명)를 입력해야 예약이 가능합니다.');
-                        return;
-                    }
-                    // 선생님 좌석은 예약 성공 시 인원 수를 capacity(1)로 고정
-                    const reservationCount = isAdminOnly ? capacity : (isAdminLoggedIn ? capacity : members.length);
-                    validCount = reservationCount;
                     pin = 'ADMIN'; 
                 } else {
-                    // 일반 예약
-                    if (validCount < minRequired) {
-                        alert(`${currentButton.dataset.initialName}은(는) 최소 ${minRequired}명 이상 입력해야 예약이 가능합니다. 현재 입력: ${validCount}명`);
-                        return;
-                    }
+                    // 일반 사용자 예약
                     pin = pinInput.value.trim();
                     if (!/^\d{4}$/.test(pin)) {
-                        alert('PIN 번호는 4자리의 숫자로 입력해야 합니다.');
+                        alert('예약 취소용 PIN 번호는 4자리 숫자로 입력해야 합니다.');
                         return;
                     }
                 }
 
-                if (validCount >= minRequired) {
-                    const now = new Date();
-                    const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                    
-                    const principalName = members[0] ? members[0].name : '관리자 예약';
-                    const isReservedByAdmin = isAdminLoggedIn || isAdminOnly;
-                    
-                    // 최종 예약 인원 결정 (선생님 좌석은 1명으로 간주)
-                    const reservationCount = isAdminOnly ? 1 : members.length;
-                    const adminLabel = isReservedByAdmin ? '<br><span style="color:red; font-weight:bold;">(관리자 예약)</span>' : '';
-
-                    currentButton.innerHTML = `
-                        ${principalName}${reservationCount > 1 ? ` 외 ${reservationCount - 1}명` : ''}<br>
-                        <span class="reserved-info">
-                            ${isAdminOnly ? '예약 완료' : `인원: ${reservationCount}명 (최소 ${minRequired}명)`}<br>
-                            등록: ${timeString}
-                        </span>
-                        ${adminLabel}
-                    `;
-                    
-                    currentButton.classList.add('reserved');
-                    currentButton.dataset.pin = pin; 
-                    currentButton.dataset.adminReserved = isReservedByAdmin ? 'true' : 'false';
-                    currentButton.style.fontSize = '16px'; 
-                    currentButton.style.lineHeight = '1.2'; 
-
-                    SEAT_DATA[currentButton.id] = { 
-                        pin: pin, 
-                        members: members, 
-                        time: timeString,
-                        adminReserved: isReservedByAdmin,
-                        adminOnly: isAdminOnly
-                    };
-                    
-                    saveSeatData(); 
-                    
-                    modal.style.display = 'none';
-                    alert(`${currentButton.dataset.initialName}에 ${principalName} ${reservationCount > 1 ? ` 외 ${reservationCount - 1}명 ` : ''} 등록 완료!${isReservedByAdmin ? ' (관리자 모드)' : ''}`);
-                    
-                    // UI 강제 업데이트로 색상 적용 보장
-                    updateSeatsUI();
-                }
+                // 예약 저장
+                const now = new Date();
+                const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                
+                SEAT_DATA[currentButton.id] = {
+                    pin: pin,
+                    members: members,
+                    time: timeString,
+                    adminReserved: isAdminLoggedIn
+                };
+                
+                saveSeatData(); // 데이터 저장
+                updateSeatsUI(); // UI 업데이트
+                modal.style.display = 'none';
+                
+                const principalName = members[0].name;
+                const reservationCount = members.length;
+                alert(`${currentButton.dataset.initialName}이(가) ${principalName}${reservationCount > 1 ? ` 외 ${reservationCount - 1}명` : ''}으로 예약되었습니다.`);
             });
 
             document.getElementById('cancel-button').addEventListener('click', () => {

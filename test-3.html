@@ -68,13 +68,13 @@
         /* 그룹 1 (상단) - 2행 x 4열 */
         .horizontal-grid {
             grid-template-columns: repeat(4, 1fr); 
-            grid-template-rows: repeat(2, 1fr);     
+            grid-template-rows: repeat(2, 1fr); 
         }
 
         /* 그룹 2, 3, 4, 5 (중앙/하단) - 4행 x 2열 */
         .vertical-grid {
             grid-template-columns: repeat(2, 1fr); 
-            grid-template-rows: repeat(4, 1fr);     
+            grid-template-rows: repeat(4, 1fr); 
         }
 
         /* 중앙 및 하단 그룹 컨테이너 (좌우 배치) */
@@ -181,8 +181,8 @@
             <label for="adminPass">비밀번호:</label>
             <input type="password" id="adminPass" placeholder="비밀번호를 입력하세요">
             <div class="modal-buttons" style="margin-top: 20px; display: flex; gap: 10px;">
-                <button id="admin-login-button" style="background-color: #4CAF50; color: white;">로그인</button>
-                <button id="admin-cancel-button" style="background-color: #f44336; color: white;">취소</button>
+                <button id="admin-login-button">로그인</button>
+                <button id="admin-cancel-button">취소</button>
             </div>
         </div>
     </div>
@@ -190,33 +190,32 @@
     <div id="accessGateModal" class="modal">
         <div class="modal-content">
             <h3>좌석 배치 3 접근 비밀번호</h3>
+            <p style="margin-bottom: 20px;">이 구역은 비밀번호가 필요합니다. 관리자에게 문의하세요.</p>
             <label for="accessPass">비밀번호:</label>
-            <input type="password" id="accessPass" placeholder="비밀번호를 입력하세요">
+            <input type="password" id="accessPass" placeholder="접근 비밀번호를 입력하세요">
             <div class="modal-buttons" style="margin-top: 20px; display: flex; gap: 10px;">
-                <button id="access-login-button">확인</button>
+                <button id="access-login-button">입장</button>
                 <button id="access-cancel-button">취소</button>
             </div>
         </div>
     </div>
 
     <script>
-        // ★★★ 1. 상수 및 상태 설정 ★★★
-        const SEAT_DATA_KEY = 'seatData3'; // ★★★ 데이터 분리 키: test-3.html 전용
-
+        const SEAT_DATA_KEY = 'seatData3'; 
+        const ACCESS_PASSWORD = '1004'; // ★★★ 좌석 배치 3 접근 비밀번호
         const SECRET_PASSWORDS = ['shinheung8802!']; // 관리자 비밀번호
-        const ACCESS_PASS = 'shinheung8802'; // 좌석 배치 3 접근 비밀번호
-
-        let isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true'; 
-        let SEAT_DATA = JSON.parse(localStorage.getItem(SEAT_DATA_KEY) || '{}'); // ★★★ 데이터 로드
-        let currentButton = null; 
         
+        let isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+        let SEAT_DATA = JSON.parse(localStorage.getItem(SEAT_DATA_KEY) || '{}'); 
+        let currentButton = null;
+
         // DOM 요소 정의
         const seatView = document.getElementById('seat-view');
         const adminModeToggle = document.getElementById('admin-mode-toggle');
         const resetAllButton = document.getElementById('reset-all-button');
         const adminLoginModal = document.getElementById('adminLoginModal');
         const adminPassInput = document.getElementById('adminPass');
-        const accessGateModal = document.getElementById('accessGateModal');
+        const accessGateModal = document.getElementById('accessGateModal'); // Access Gate DOM 요소
         const accessPassInput = document.getElementById('accessPass');
         const accessLoginButton = document.getElementById('access-login-button');
         const accessCancelButton = document.getElementById('access-cancel-button');
@@ -224,28 +223,29 @@
         const memberInputsDiv = document.getElementById('member-inputs');
         const pinInput = document.getElementById('reservationPin');
         const pinInputGroup = document.getElementById('pin-input-group');
-
+        
         // -------------------- 2. 유틸리티 함수 --------------------
         const saveSeatData = () => {
             localStorage.setItem(SEAT_DATA_KEY, JSON.stringify(SEAT_DATA));
         };
         
         const showSeatView = () => {
-             document.body.style.justifyContent = 'flex-start';
-             seatView.style.display = 'flex';
-             accessGateModal.style.display = 'none';
-             updateSeatsUI();
+            document.body.style.justifyContent = 'flex-start';
+            seatView.style.display = 'flex';
+            accessGateModal.style.display = 'none';
+            updateSeatsUI();
         }
-
+        
+        // ★★★ 핵심 함수: 접근 권한 확인 및 관리자 우회 처리 ★★★
         const checkAccess = () => {
             if (isAdminLoggedIn || localStorage.getItem('accessGranted3') === 'true') {
                 showSeatView();
             } else {
                 accessGateModal.style.display = 'block';
+                accessPassInput.focus();
             }
         };
 
-        // -------------------- 3. 관리자/UI 상태 관리 --------------------
         const updateAdminUI = () => {
             if (isAdminLoggedIn) {
                 adminModeToggle.textContent = '관리자 모드 (로그아웃)';
@@ -258,75 +258,47 @@
             }
         };
 
-        const handleAdminLogin = () => {
-              isAdminLoggedIn = true;
-              localStorage.setItem('isAdminLoggedIn', 'true');
-              updateAdminUI();
-              adminLoginModal.style.display = 'none';
-              alert('관리자/선생님으로 로그인했습니다.');
-              updateSeatsUI(); // 예약 모달 변경사항 반영
-        };
-
-        const handleAdminLogout = () => {
-              isAdminLoggedIn = false;
-              localStorage.removeItem('isAdminLoggedIn');
-              updateAdminUI();
-              alert('관리자 모드가 해제되었습니다.');
-              updateSeatsUI(); // 예약 모달 변경사항 반영
-        };
-
         const revertSeatToInitialState = (button) => {
-             const initialName = button.dataset.initialName;
-             const seatId = button.id;
+            const initialName = button.dataset.initialName;
+            const seatId = button.id;
+            
+            button.innerHTML = initialName;
+            button.classList.remove('reserved');
+            button.style.fontSize = '18px';
+            button.style.lineHeight = '1.3';
+            button.dataset.pin = '';
+            button.dataset.adminReserved = 'false';
+            delete SEAT_DATA[seatId];
+            saveSeatData(); 
 
-             button.innerHTML = initialName;
-             button.classList.remove('reserved');
-             button.style.fontSize = '18px'; 
-             button.style.lineHeight = '1.3';
-             button.dataset.pin = ''; 
-             button.dataset.adminReserved = 'false'; 
-             delete SEAT_DATA[seatId]; 
-             
-             button.style.backgroundColor = '#b3e5fc';
-             button.style.borderColor = '#81d4fa';
-             
-             saveSeatData();
+            // 초기 색상 복원
+            button.style.backgroundColor = '#b3e5fc'; 
+            button.style.borderColor = '#81d4fa'; 
+        };
+
+        const resetSeats = (reason) => {
+            document.querySelectorAll('#seat-view .seat-button').forEach(revertSeatToInitialState);
+            SEAT_DATA = {};
+            saveSeatData();
+            console.log(`모든 좌석이 초기화되었습니다. (이유: ${reason})`);
+            updateSeatsUI();
         }
 
-        const resetSeats = (time) => {
-            document.querySelectorAll('.seat-button').forEach(button => {
-                revertSeatToInitialState(button);
-            });
-            SEAT_DATA = {};
-            saveSeatData(); 
-            console.log(`[${time}] 모든 좌석 예약 정보가 초기화되었습니다. (키: ${SEAT_DATA_KEY})`);
-        };
-        
-        const handleFullReset = () => {
-            if (!isAdminLoggedIn) return;
-            
-            if (confirm('경고: 이 좌석 배치(test-3.html)의 모든 예약을 영구적으로 삭제하고 초기화하시겠습니까? (이 작업은 복구할 수 없습니다)')) {
-                resetSeats('관리자 강제 초기화');
-                alert('관리자 권한으로 모든 좌석 예약이 초기화되었습니다.');
-            }
-        };
-        
-        // -------------------- 4. 좌석 생성 및 UI 업데이트 로직 --------------------
-        let seatCount = 0; 
-
-        function generateSeats(groupId, count) {
-            const container = document.getElementById(groupId);
+        // -------------------- 3. 좌석 생성 및 UI 업데이트 --------------------
+        let seatCount = 0; // 1번부터 40번까지 번호를 매기기 위한 카운터
+        const generateSeats = (containerId, count) => {
+            const container = document.getElementById(containerId);
             let html = '';
             for (let i = 0; i < count; i++) {
-                seatCount++; 
+                seatCount++;
                 html += `<button class="seat-button" 
-                             data-initial-name="좌석 ${seatCount}" 
-                             data-type="single" 
-                             data-capacity="1" 
-                             data-min-required="1" 
-                             data-pin="" 
-                             data-admin-reserved="false">
-                         </button>`;
+                            data-initial-name="좌석 ${seatCount}" 
+                            data-type="single" 
+                            data-capacity="1" 
+                            data-min-required="1" 
+                            data-pin="" 
+                            data-admin-reserved="false">
+                        </button>`;
             }
             container.innerHTML = html;
         }
@@ -337,90 +309,123 @@
         generateSeats('group-3', 8); // 17번 ~ 24번
         generateSeats('group-4', 8); // 25번 ~ 32번
         generateSeats('group-5', 8); // 33번 ~ 40번
-        
+
+
         const updateSeatsUI = () => {
-             const buttons = document.querySelectorAll('#seat-view .seat-button');
-             buttons.forEach((button, index) => {
-                  const seatId = 'seat-' + index;
-                  button.id = seatId;
-                  const savedData = SEAT_DATA[seatId];
-                  
-                  if (savedData) {
-                      const principalName = savedData.members[0] ? savedData.members[0].name : (savedData.adminReserved ? '관리자 예약' : '예약자');
-                      const adminLabel = savedData.adminReserved ? '<br><span style="color:red; font-weight:bold;">(관리자 예약)</span>' : '';
+            const buttons = document.querySelectorAll('#seat-view .seat-button');
+            buttons.forEach((button, index) => {
+                const seatId = 'seat-' + index;
+                button.id = seatId;
+                const savedData = SEAT_DATA[seatId];
 
-                      button.innerHTML = `
-                          ${principalName}<br>
-                          <span class="reserved-info">
-                              등록: ${savedData.time}
-                          </span>
-                          ${adminLabel}
-                      `;
-                      
-                      button.classList.add('reserved');
-                      button.style.fontSize = '16px'; 
-                      button.style.lineHeight = '1.2'; 
-
-                      button.dataset.pin = savedData.pin;
-                      button.dataset.adminReserved = savedData.adminReserved ? 'true' : 'false';
-                      button.style.backgroundColor = '#81c784';
-
-                  } else {
-                      revertSeatToInitialState(button);
-                  }
-             });
+                if (savedData) {
+                    // 예약 정보 표시 (test-3은 1인석으로 간주하여 인원수는 표시하지 않음)
+                    const principalName = savedData.members[0] ? savedData.members[0].name : (savedData.adminReserved ? '관리자 예약' : '예약자');
+                    const adminLabel = savedData.adminReserved ? '<br><span style="color:red; font-weight:bold;">(관리자 예약)</span>' : '';
+                    
+                    button.innerHTML = `
+                        ${principalName}<br>
+                        <span class="reserved-info">
+                            등록: ${savedData.time}
+                        </span>
+                        ${adminLabel}
+                    `;
+                    button.classList.add('reserved');
+                    button.style.fontSize = '16px';
+                    button.style.lineHeight = '1.2';
+                    button.dataset.pin = savedData.pin;
+                    button.dataset.adminReserved = savedData.adminReserved ? 'true' : 'false';
+                    button.style.backgroundColor = '#81c784';
+                    
+                } else {
+                    revertSeatToInitialState(button);
+                }
+            });
         }
-        
+
         // 모달 입력 필드 동적 생성 함수 (개인석용)
         const createMemberInputs = () => {
             memberInputsDiv.innerHTML = '';
             const group = document.createElement('div');
             group.className = 'input-group';
-            const header = document.createElement('h4');
-            header.textContent = `예약자 정보 (${isAdminLoggedIn ? '필수: 관리자 이름/그룹명' : '필수 입력'})`;
+            
+            const header = document.createElement('p');
+            header.textContent = `1번 인원 정보 (필수 입력)`;
             header.style.marginBottom = '10px';
             group.appendChild(header);
 
             const idInput = document.createElement('input');
-            idInput.type = 'text'; idInput.className = 'member-id'; idInput.placeholder = `학번 (관리자: 1111 등)`;
-            idInput.required = true;
+            idInput.type = 'text';
+            idInput.className = 'member-id';
+            idInput.placeholder = `학번`;
             group.appendChild(idInput);
-            
+
             const nameInput = document.createElement('input');
-            nameInput.type = 'text'; nameInput.className = 'member-name'; nameInput.placeholder = `성명 (관리자: OOO 선생님)`;
-            nameInput.required = true;
+            nameInput.type = 'text';
+            nameInput.className = 'member-name';
+            nameInput.placeholder = `성명`;
             group.appendChild(nameInput);
 
             memberInputsDiv.appendChild(group);
+
+            // 관리자 로그인 시 핀 입력창 숨김
+            pinInputGroup.style.display = isAdminLoggedIn ? 'none' : 'block';
+            if (!isAdminLoggedIn) {
+                pinInput.value = ''; // 일반 예약 시 PIN 초기화
+            }
         };
 
-        // -------------------- 5. 이벤트 리스너 설정 --------------------
-        document.addEventListener('DOMContentLoaded', () => {
-            updateAdminUI();
-            
-            // ★★★ 초기 접근 검사 ★★★
-            checkAccess();
 
-            // [메인 화면] 관리자 모드 토글
-            adminModeToggle.addEventListener('click', () => {
-                if (isAdminLoggedIn) {
-                    handleAdminLogout();
+        // -------------------- 1. 초기 접근 게이트 (Access Gate) 및 관리자/UI 상태 관리 --------------------
+        
+        const handleAdminLogin = () => {
+            isAdminLoggedIn = true;
+            localStorage.setItem('isAdminLoggedIn', 'true');
+            updateAdminUI();
+            adminLoginModal.style.display = 'none';
+            checkAccess(); // 관리자 로그인 후 바로 좌석 화면 표시
+            alert('관리자/선생님으로 로그인했습니다. (PIN 입력창 자동 숨김, 초기화 버튼 활성화)');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateAdminUI(); // 관리자 UI 초기 반영
+            checkAccess(); // 페이지 로드 시 접근 권한 확인
+
+            // [접근 게이트] 로그인 버튼
+            accessLoginButton.addEventListener('click', () => {
+                const password = accessPassInput.value;
+                if (password === ACCESS_PASSWORD) {
+                    localStorage.setItem('accessGranted3', 'true');
+                    showSeatView();
                 } else {
-                    adminPassInput.value = '';
-                    adminLoginModal.style.display = 'block';
+                    alert('비밀번호가 틀렸습니다.');
                 }
             });
 
-            // [메인 화면] 관리자 로그인
+            // [접근 게이트] 취소 버튼
+            accessCancelButton.addEventListener('click', () => {
+                window.location.href = 'index.html'; // 메인으로 복귀
+            });
+            
+            // [관리자] 로그인/로그아웃 기능
+            adminModeToggle.addEventListener('click', () => {
+                if (isAdminLoggedIn) {
+                    isAdminLoggedIn = false;
+                    localStorage.removeItem('isAdminLoggedIn');
+                    updateAdminUI();
+                    checkAccess(); // 로그아웃 후 다시 접근 게이트 확인 (비밀번호 요청)
+                    alert('관리자 모드가 해제되었습니다.');
+                } else {
+                    adminPassInput.value = '';
+                    adminLoginModal.style.display = 'block';
+                    adminPassInput.focus();
+                }
+            });
+            
             document.getElementById('admin-login-button').addEventListener('click', () => {
                 const password = adminPassInput.value;
                 if (SECRET_PASSWORDS.includes(password)) {
                     handleAdminLogin();
-                    // 관리자 로그인 시에도 게이트 통과 처리 (새로고침 시 바로 입장 가능)
-                    localStorage.setItem('accessGranted3', 'true'); 
-                    if (accessGateModal.style.display === 'block') {
-                        showSeatView();
-                    }
                 } else {
                     alert('비밀번호가 틀렸습니다.');
                 }
@@ -430,163 +435,136 @@
                 adminLoginModal.style.display = 'none';
             });
             
-            // [좌석 화면] 전체 예약 초기화
-            resetAllButton.addEventListener('click', handleFullReset); 
-            
-            // [비밀번호 게이트] 확인 버튼
-            accessLoginButton.addEventListener('click', () => {
-                const password = accessPassInput.value;
-                if (password === ACCESS_PASS) {
-                    localStorage.setItem('accessGranted3', 'true');
-                    showSeatView();
-                } else {
-                    alert('비밀번호가 틀렸습니다.');
-                    accessPassInput.value = '';
+            // [추가] 전체 예약 초기화 버튼
+            resetAllButton.addEventListener('click', () => {
+                if (!isAdminLoggedIn) return;
+                if (confirm('경고: 이 좌석 배치(test-3.html)의 모든 예약을 영구적으로 삭제하고 초기화하시겠습니까?')) {
+                    resetSeats('관리자 강제 초기화');
+                    alert('모든 좌석 예약이 초기화되었습니다.');
                 }
             });
 
-            // [비밀번호 게이트] 취소 버튼
-            accessCancelButton.addEventListener('click', () => {
-                window.location.href = 'index.html'; // 메인으로 복귀
-            });
 
+            // -------------------- 4. 예약 및 취소 기능 --------------------
+            
             // [좌석 화면] 개별 좌석 클릭 이벤트
             seatView.addEventListener('click', (event) => {
                 const button = event.target.closest('.seat-button');
                 if (!button) return;
-
+                
                 currentButton = button;
                 const initialName = button.dataset.initialName;
-                
-                // 예약된 좌석 클릭 시 (취소 로직)
+
+                // 1. 예약된 좌석 클릭 시 (취소 로직)
                 if (button.classList.contains('reserved')) {
                     const reservedData = SEAT_DATA[button.id];
-
-                    if (!reservedData || !reservedData.members || reservedData.pin === undefined) {
-                        if (isAdminLoggedIn && confirm(`[관리자 경고] 해당 좌석의 예약 정보가 손상되었습니다. 강제로 초기화하시겠습니까?`)) {
-                            revertSeatToInitialState(button);
-                            alert('관리자 권한으로 예약이 강제 취소되었습니다.');
-                            return;
-                        }
-                        if (!isAdminLoggedIn) {
-                            alert('오류: 예약 정보가 손상되었거나 유효하지 않아 취소할 수 없습니다. 관리자에게 문의하세요.');
-                            return;
-                        }
-                    }
-
-                    if (isAdminLoggedIn) {
-                         const data = reservedData || {members: [{name: '정보 없음', id: '정보 없음'}], pin: '없음', adminReserved: false};
-                         const memberInfo = data.members[0] ? `${data.members[0].name} (${data.members[0].id})` : '정보 없음';
-                         const adminLabel = data.adminReserved ? ' (관리자 예약)' : '';
-                         
-                         if (confirm(`[관리자 취소]\n${initialName} 좌석의 예약 정보입니다${adminLabel}.\n예약자: ${memberInfo}\nPIN: (보호됨)\n\n이 예약을 삭제하시겠습니까?`)) {
-                             revertSeatToInitialState(button);
-                             alert('관리자 권한으로 예약이 취소되었습니다.');
-                         }
-                         return;
-                    }
                     
-                    const confirmID = prompt(`${initialName}은(는 예약된 좌석입니다.\n예약한 사람의 학번을 입력하세요:`);
-                    if (confirmID === null || confirmID.trim() === '') return;
+                    // 예약 정보 손상 시 관리자만 강제 취소 가능하도록 보완
+                    if (!reservedData || !reservedData.members || reservedData.pin === undefined) {
+                         if (isAdminLoggedIn && confirm(`[관리자 경고] 해당 좌석의 예약 정보가 손상되었습니다. 강제로 초기화하시겠습니까?`)) {
+                             revertSeatToInitialState(button);
+                             alert('관리자 권한으로 예약이 강제 취소되었습니다.');
+                             return;
+                         }
+                         if (!isAdminLoggedIn) {
+                             alert('오류: 예약 정보가 손상되었거나 유효하지 않아 취소할 수 없습니다. 관리자에게 문의하세요.');
+                             return;
+                         }
+                    }
 
+                    // 관리자 로그인 상태: 즉시 취소 가능
+                    if (isAdminLoggedIn) {
+                        const data = reservedData || {members: [{name: '정보 없음', id: '정보 없음'}], pin: '없음', adminReserved: false};
+                        const memberInfo = data.members[0] ? `${data.members[0].name} (${data.members[0].id})` : '정보 없음';
+                        const adminLabel = data.adminReserved ? ' (관리자 예약)' : '';
+
+                        if (confirm(`[관리자 모드] ${initialName} 정보입니다${adminLabel}.\n예약자: ${memberInfo}\nPIN: (보호됨)\n\n이 예약을 삭제하시겠습니까?`)) {
+                            revertSeatToInitialState(button);
+                            alert('관리자 권한으로 예약이 취소되었습니다.');
+                        }
+                        return;
+                    }
+
+                    // 일반 사용자: 학번 및 PIN 확인 후 취소
+                    const confirmID = prompt(`${initialName}은(는 예약된 좌석입니다.\n예약한 명단 중 한 명의 학번을 입력하세요:`);
+                    if (confirmID === null || confirmID.trim() === '') return;
+                    
                     const confirmPIN = prompt(`학번 ${confirmID}의 취소용 PIN (4자리)을 입력하세요:`);
                     if (confirmPIN === null || confirmPIN.trim() === '') return;
-
-                    const isMember = reservedData.members.length > 0 && reservedData.members[0].id === confirmID.trim();
                     
+                    const isMember = reservedData.members.some(m => m.id === confirmID.trim());
                     if (isMember && confirmPIN.trim() === reservedData.pin) {
                         revertSeatToInitialState(button);
                         alert('예약이 취소되었습니다.');
+                    } else if (isMember) {
+                        alert('PIN 번호가 일치하지 않습니다.');
                     } else {
-                        alert('입력된 학번이나 PIN 번호가 일치하지 않습니다.');
+                        alert('입력된 학번이 예약된 명단에 없거나, PIN 번호가 일치하지 않습니다.');
                     }
                     return;
                 }
-                
-                // 예약 모달 띄우기 
-                document.getElementById('modal-seat-name').textContent = initialName + " 예약";
-                createMemberInputs();
-                pinInput.value = '';
-                
-                pinInputGroup.style.display = isAdminLoggedIn ? 'none' : 'block';
 
+                // 2. 빈 좌석 클릭 시 (예약 로직)
+                document.getElementById('modal-seat-name').textContent = initialName + " 예약";
+                createMemberInputs(); // 1인석이므로 인원수 제한 없음
                 reservationModal.style.display = 'block';
+
+                // 예약 창 열릴 때 첫 번째 학번 입력창에 포커스
+                memberInputsDiv.querySelector('.member-id').focus(); 
             });
-            
-            // [예약 모달] 저장 버튼
+
             document.getElementById('save-button').addEventListener('click', () => {
                 const members = [];
+                
                 const idInput = memberInputsDiv.querySelector('.member-id');
                 const nameInput = memberInputsDiv.querySelector('.member-name');
-                
-                const id = idInput ? idInput.value.trim() : '';
-                const name = nameInput ? nameInput.value.trim() : '';
-                
+                const id = idInput.value.trim();
+                const name = nameInput.value.trim();
+
                 if (id === '' || name === '') {
-                    alert('학번과 성명을 모두 입력해야 합니다.');
+                    alert('학번과 성명을 필수로 입력해야 예약이 가능합니다.');
                     return;
                 }
+
                 members.push({ id: id, name: name });
 
+                // 유효성 검사 2: PIN 번호 확인 (관리자 제외)
                 let pin;
-                let isReservationSuccess = false;
-                const capacity = parseInt(currentButton.dataset.capacity);
-                const minRequired = parseInt(currentButton.dataset.minRequired);
-
-
-                if (isAdminLoggedIn) {
-                    pin = 'ADMIN'; 
-                    isReservationSuccess = true;
-                } else {
+                if (!isAdminLoggedIn) {
                     pin = pinInput.value.trim();
                     if (!/^\d{4}$/.test(pin)) {
-                        alert('PIN 번호는 4자리의 숫자로 입력해야 합니다.');
+                        alert('예약 취소용 PIN 번호는 4자리 숫자로 입력해야 합니다.');
                         return;
                     }
-                    isReservationSuccess = true;
+                } else {
+                    // 관리자 예약 시 PIN은 임시로 'ADMIN'으로 설정
+                    pin = 'ADMIN';
                 }
 
-                if (isReservationSuccess) {
-                    const now = new Date();
-                    const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                    
-                    const principalName = members[0].name;
-                    const reservationCount = isAdminLoggedIn ? capacity : 1; // test-3은 1인석으로 간주
-                    const adminLabel = isAdminLoggedIn ? '<br><span style="color:red; font-weight:bold;">(관리자 예약)</span>' : '';
+                // 예약 저장
+                const now = new Date();
+                const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                const principalName = members[0].name;
 
-                    currentButton.innerHTML = `
-                        ${principalName}<br>
-                        <span class="reserved-info">
-                            등록: ${timeString}
-                        </span>
-                        ${adminLabel}
-                    `;
-                    
-                    currentButton.classList.add('reserved');
-                    currentButton.dataset.pin = pin; 
-                    currentButton.dataset.adminReserved = isAdminLoggedIn ? 'true' : 'false'; 
-                    currentButton.style.fontSize = '16px'; 
-                    currentButton.style.lineHeight = '1.2'; 
-
-                    SEAT_DATA[currentButton.id] = { 
-                        pin: pin, 
-                        members: members, 
-                        time: timeString,
-                        adminReserved: isAdminLoggedIn 
-                    };
-                    
-                    saveSeatData();
-                    
-                    reservationModal.style.display = 'none';
-                    alert(`${currentButton.dataset.initialName}에 ${principalName}님 등록 완료!${isAdminLoggedIn ? ' (관리자 모드)' : ''}`);
-                }
+                SEAT_DATA[currentButton.id] = {
+                    pin: pin,
+                    members: members,
+                    time: timeString,
+                    adminReserved: isAdminLoggedIn
+                };
+                
+                saveSeatData(); // 데이터 저장
+                updateSeatsUI(); // UI 업데이트
+                reservationModal.style.display = 'none';
+                
+                alert(`${currentButton.dataset.initialName}이(가) ${principalName}으로 예약되었습니다.`);
             });
 
             document.getElementById('cancel-button').addEventListener('click', () => {
                 reservationModal.style.display = 'none';
             });
 
-            // -------------------- 6. 자동 초기화 타이머 설정 --------------------
+            // -------------------- 5. 자동 초기화 타이머 설정 --------------------
             const initializeTimers = () => {
                 const now = new Date();
                 const today = now.getDate();
